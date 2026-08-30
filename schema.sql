@@ -55,7 +55,7 @@ CREATE TABLE usuario (
 -- ============================================================
 CREATE TABLE pedido (
     id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    fecha        DATE NOT NULL DEFAULT CURRENT_DATE,
+    fecha        DATE NOT NULL DEFAULT CURRENT_DATE CHECK (fecha <= CURRENT_DATE),
     estado       estado_pedido NOT NULL DEFAULT 'PENDIENTE',
     total        NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (total >= 0),
     forma_pago   forma_pago NOT NULL,
