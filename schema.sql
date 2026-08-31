@@ -47,7 +47,10 @@ CREATE TABLE usuario (
     contrasena   VARCHAR(255) NOT NULL,
     rol          rol NOT NULL DEFAULT 'USUARIO',
     eliminado    BOOLEAN NOT NULL DEFAULT FALSE,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT chk_usuario_mail_formato CHECK (
+        mail ~ '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+    )
 );
 
 -- ============================================================
