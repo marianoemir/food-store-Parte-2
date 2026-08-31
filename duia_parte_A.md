@@ -208,3 +208,48 @@ Con esta corrección, el efecto verificado en el motor coincide exactamente con 
 
 ### Principio general
 En cualquier tabla transaccional (inventarios, productos, pedidos), omitir el `WHERE` en un `UPDATE` o `DELETE` es un error crítico que modifica masivamente todos los registros de la tabla. Toda sentencia de este tipo debe incluir siempre un filtro preciso (habitualmente por `id`, o por la condición de negocio exacta que se quiere cumplir).
+
+###Parte A (Andrés)
+Se le dio el siguiente Promp a openCode: "En la tabla pedido, agregar un trigger BEFORE UPDATE que impida que el campo estado pase de 'CONFIRMADO' a 'PENDIENTE'. Si se intenta, debe lanzar una excepción con RAISE EXCEPTION."
+El resultado fue el siguiente: 
+
+-- Valida que un pedido CONFIRMADO no pueda volver a estado PENDIENTE
+CREATE OR REPLACE FUNCTION fn_validar_estado_pedido()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.estado = 'CONFIRMADO' AND NEW.estado = 'PENDIENTE' THEN
+        RAISE EXCEPTION 'No se permite cambiar el estado de un pedido de CONFIRMADO a PENDIENTE (Pedido ID: %)', OLD.id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_validar_estado_pedido
+BEFORE UPDATE OF estado ON pedido
+FOR EACH ROW EXECUTE FUNCTION fn_validar_estado_pedido();
+
+--Realizamos la siguiente prueba
+
+Caso Inválido (debe lanzar excepción):
+BEGIN;
+-- Tomar un pedido en estado CONFIRMADO o actualizar uno a CONFIRMADO
+UPDATE pedido SET estado = 'CONFIRMADO' WHERE id = 1;
+-- Intentar cambiarlo a PENDIENTE
+UPDATE pedido SET estado = 'PENDIENTE' WHERE id = 1; -- Debe fallar con RAISE EXCEPTION
+ROLLBACK;
+
+El resultado fue el esperado, lanzando el siguiente error: 
+
+ERROR:  No se permite cambiar el estado de un pedido de CONFIRMADO a PENDIENTE (Pedido ID: 1)
+CONTEXTO:  función PL/pgSQL fn_validar_estado_pedido() en la línea 4 en RAISE
+
+--Realiazamos la siguiente prueba
+
+Caso Válido (transición permitida):
+BEGIN;
+UPDATE pedido SET estado = 'CONFIRMADO' WHERE id = 1;
+UPDATE pedido SET estado = 'TERMINADO' WHERE id = 1;  -- Debe ejecutarse correctamente
+ROLLBACK;
+
+El resultado fue el esperado, ejecutándose correctamente
+
