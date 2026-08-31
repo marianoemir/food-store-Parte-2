@@ -95,6 +95,21 @@ AFTER UPDATE ON detalle_pedido
 REFERENCING NEW TABLE AS afectados
 FOR EACH STATEMENT EXECUTE FUNCTION fn_recalcular_total();
 
+-- Valida que un pedido CONFIRMADO no pueda volver a estado PENDIENTE
+CREATE OR REPLACE FUNCTION fn_validar_estado_pedido()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF OLD.estado = 'CONFIRMADO' AND NEW.estado = 'PENDIENTE' THEN
+        RAISE EXCEPTION 'No se permite cambiar el estado de un pedido de CONFIRMADO a PENDIENTE (Pedido ID: %)', OLD.id;
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_validar_estado_pedido
+BEFORE UPDATE OF estado ON pedido
+FOR EACH ROW EXECUTE FUNCTION fn_validar_estado_pedido();
+
 
 -- ============================================================
 -- 4) PROCEDIMIENTO TRANSACCIONAL: alta de pedido con detalles
